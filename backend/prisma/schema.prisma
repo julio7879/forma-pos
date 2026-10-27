@@ -1,0 +1,134 @@
+// Prisma schema for FORMA POS
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  ADMIN
+  SUPERVISOR
+  VENDEDOR
+  PREPARADOR
+}
+
+enum OrderOrigin {
+  WEB
+  POS
+}
+
+enum OrderStatus {
+  RECIBIDO
+  EN_PREPARACION
+  LISTO
+  ENTREGADO
+  CANCELADO
+}
+
+enum PaymentStatus {
+  PENDIENTE
+  ANTICIPO
+  PAGADO_TOTAL
+}
+
+enum PromotionType {
+  PORCENTAJE
+  MONTO_FIJO
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  password  String
+  role      Role     @default(VENDEDOR)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  orders    Order[]
+}
+
+model Product {
+  id            String                 @id @default(uuid())
+  name          String
+  description   String?
+  basePrice     Decimal
+  stock         Int                    @default(0)
+  imageUrl      String?
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+  options       ProductCustomization[]
+  orderItems    OrderItem[]
+}
+
+model ProductCustomization {
+  id          String   @id @default(uuid())
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  title       String
+  type        String
+  extraPrice  Decimal  @default(0.0)
+  createdAt   DateTime @default(now())
+}
+
+model Order {
+  id             String         @id @default(uuid())
+  reference      String         @unique
+  origin         OrderOrigin
+  status         OrderStatus    @default(RECIBIDO)
+  paymentStatus  PaymentStatus  @default(PENDIENTE)
+  totalAmount    Decimal
+  discountAmount Decimal        @default(0.0)
+  userId         String?
+  user           User?          @relation(fields: [userId], references: [id])
+  customerName   String?
+  customerPhone  String?
+  customerEmail  String?
+  items          OrderItem[]
+  payments       Payment[]
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+}
+
+model OrderItem {
+  id              String   @id @default(uuid())
+  orderId         String
+  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId       String
+  product         Product  @relation(fields: [productId], references: [id])
+  quantity        Int      @default(1)
+  unitPrice       Decimal
+  customizations  Json?
+  subtotal        Decimal
+}
+
+model Payment {
+  id        String   @id @default(uuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  amount    Decimal
+  method    String
+  createdAt DateTime @default(now())
+}
+
+model Promotion {
+  id          String        @id @default(uuid())
+  code        String        @unique
+  type        PromotionType
+  value       Decimal
+  startDate   DateTime
+  endDate     DateTime
+  isActive    Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+}
+
+model ActivityLog {
+  id        String   @id @default(uuid())
+  action    String
+  entity    String
+  entityId  String?
+  details   Json?
+  createdAt DateTime @default(now())
+}
