@@ -1,4 +1,4 @@
-// Prisma schema for FORMA POS
+// Esquema oficial de 10 Entidades - FORMA POS (Versión 0.3 Consolidada)
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -8,11 +8,21 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// ==========================================
+// ENUMS DEL NEGOCIO
+// ==========================================
+
 enum Role {
   ADMIN
   SUPERVISOR
   VENDEDOR
   PREPARADOR
+}
+
+enum OptionType {
+  SELECT
+  TEXT
+  COLOR
 }
 
 enum OrderOrigin {
@@ -30,105 +40,193 @@ enum OrderStatus {
 
 enum PaymentStatus {
   PENDIENTE
+  ANTICIPO_PARCIAL
+  PAGADO
+}
+
+enum PaymentType {
   ANTICIPO
-  PAGADO_TOTAL
+  SALDO
+  TOTAL
+}
+
+enum PaymentMethod {
+  EFECTIVO
+  TRANSFERENCIA
+  DEMO
 }
 
 enum PromotionType {
   PORCENTAJE
-  MONTO_FIJO
+  FIJO
 }
 
+enum DiscountAppliedType {
+  PROMOCION
+  MANUAL
+}
+
+enum InventoryMovementType {
+  ENTRADA
+  SALIDA_VENTA
+  AJUSTE
+}
+
+// ==========================================
+// LAS 10 ENTIDADES CONSOLIDADAS (v0.3)
+// ==========================================
+
+// 1. Usuario (User) — RF-12
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  name      String
-  password  String
-  role      Role     @default(VENDEDOR)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  orders    Order[]
+  id                  String              @id @default(uuid())
+  nombre              String
+  email               String              @unique
+  password_hash       String
+  rol                 Role                @default(VENDEDOR)
+  activo              Boolean             @default(true)
+  created_at          DateTime            @default(now())
+  ordersCreated       Order[]             @relation("OrderCreatedBy")
+  paymentsRegistered  Payment[]           @relation("PaymentRegisteredBy")
+  discountsAuthorized OrderDiscount[]     @relation("DiscountAuthorizedBy")
+  inventoryMovements  InventoryMovement[]
+  activityLogs        ActivityLog[]
 }
 
+// 2. Producto (Product) — RF-01, RF-10, RF-14
 model Product {
-  id            String                 @id @default(uuid())
-  name          String
-  description   String?
-  basePrice     Decimal
-  stock         Int                    @default(0)
-  imageUrl      String?
-  createdAt     DateTime               @default(now())
-  updatedAt     DateTime               @updatedAt
-  options       ProductCustomization[]
-  orderItems    OrderItem[]
+  id           String              @id @default(uuid())
+  nombre       String
+  descripcion  String?
+  imagen_url   String?
+  categoria    String
+  precio_base  Decimal             @db.Decimal(10, 2)
+  stock_actual Int                 @default(0)
+  stock_minimo Int                 @default(5)
+  activo       Boolean             @default(true)
+  created_at   DateTime            @default(now())
+  options      ProductOption[]
+  orderItems   OrderItem[]
+  movements    InventoryMovement[]
 }
 
-model ProductCustomization {
-  id          String   @id @default(uuid())
-  productId   String
-  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  title       String
-  type        String
-  extraPrice  Decimal  @default(0.0)
-  createdAt   DateTime @default(now())
+// 3. Opción de Personalización (ProductOption) — RF-02
+model ProductOption {
+  id               String     @id @default(uuid())
+  product_id       String
+  product          Product    @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  nombre           String
+  tipo             OptionType
+  obligatorio      Boolean    @default(false)
+  valores_recargos Json       // Array JSON con { valor, recargo }
 }
 
+// 4. Pedido (Order) — RF-03 a RF-08
 model Order {
-  id             String         @id @default(uuid())
-  reference      String         @unique
-  origin         OrderOrigin
-  status         OrderStatus    @default(RECIBIDO)
-  paymentStatus  PaymentStatus  @default(PENDIENTE)
-  totalAmount    Decimal
-  discountAmount Decimal        @default(0.0)
-  userId         String?
-  user           User?          @relation(fields: [userId], references: [id])
-  customerName   String?
-  customerPhone  String?
-  customerEmail  String?
-  items          OrderItem[]
-  payments       Payment[]
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  id               String          @id @default(uuid())
+  referencia       String          @unique // ej. FORMA-1042
+  origen           OrderOrigin
+  cliente_nombre   String
+  cliente_contacto String          // Teléfono o email para validación en tracking
+  fecha_deseada    DateTime?
+  estado_pedido    OrderStatus     @default(RECIBIDO)
+  estado_pago      PaymentStatus   @default(PENDIENTE)
+  subtotal         Decimal         @db.Decimal(10, 2)
+  total_extras     Decimal         @default(0) @db.Decimal(10, 2)
+  total_descuento  Decimal         @default(0) @db.Decimal(10, 2)
+  total_final      Decimal         @db.Decimal(10, 2)
+  total_pagado     Decimal         @default(0) @db.Decimal(10, 2)
+  notas            String?
+  creado_por_id    String?
+  creado_por       User?           @relation("OrderCreatedBy", fields: [creado_por_id], references: [id])
+  created_at       DateTime        @default(now())
+  updated_at       DateTime        @updatedAt
+  items            OrderItem[]
+  payments         Payment[]
+  discounts        OrderDiscount[]
+  activityLogs     ActivityLog[]
 }
 
+// 5. Ítem de Pedido (OrderItem) — RF-13 (Snapshot inmutable)
 model OrderItem {
-  id              String   @id @default(uuid())
-  orderId         String
-  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  productId       String
-  product         Product  @relation(fields: [productId], references: [id])
-  quantity        Int      @default(1)
-  unitPrice       Decimal
-  customizations  Json?
-  subtotal        Decimal
+  id                    String  @id @default(uuid())
+  order_id              String
+  order                 Order   @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  product_id            String
+  product               Product @relation(fields: [product_id], references: [id])
+  nombre_snapshot       String
+  cantidad              Int     @default(1)
+  precio_base_snapshot  Decimal @db.Decimal(10, 2)
+  opciones_snapshot     Json    // Elecciones y recargos congelados al comprar
+  subtotal_item         Decimal @db.Decimal(10, 2)
 }
 
+// 6. Registro de Pago (Payment) — RF-07
 model Payment {
-  id        String   @id @default(uuid())
-  orderId   String
-  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  amount    Decimal
-  method    String
-  createdAt DateTime @default(now())
+  id                String        @id @default(uuid())
+  order_id          String
+  order             Order         @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  monto             Decimal       @db.Decimal(10, 2)
+  tipo              PaymentType
+  metodo            PaymentMethod
+  registrado_por_id String?
+  registrado_por    User?         @relation("PaymentRegisteredBy", fields: [registrado_por_id], references: [id])
+  fecha             DateTime      @default(now())
 }
 
+// 7. Promoción (Promotion) — RF-11
 model Promotion {
-  id          String        @id @default(uuid())
-  code        String        @unique
-  type        PromotionType
-  value       Decimal
-  startDate   DateTime
-  endDate     DateTime
-  isActive    Boolean       @default(true)
-  createdAt   DateTime      @default(now())
+  id             String          @id @default(uuid())
+  nombre         String
+  codigo         String?         @unique
+  tipo           PromotionType
+  valor          Decimal         @db.Decimal(10, 2)
+  alcance        String          @default("PEDIDO")
+  minimo_compra  Decimal         @default(0) @db.Decimal(10, 2)
+  fecha_inicio   DateTime
+  fecha_fin      DateTime
+  activo         Boolean         @default(true)
+  orderDiscounts OrderDiscount[]
 }
 
+// 8. Descuento Aplicado (OrderDiscount) — RF-11, RF-13, RF-17
+model OrderDiscount {
+  id                String              @id @default(uuid())
+  order_id          String
+  order             Order               @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  promotion_id      String?
+  promotion         Promotion?          @relation(fields: [promotion_id], references: [id])
+  codigo_snapshot   String?
+  tipo              DiscountAppliedType
+  valor_configurado Decimal             @db.Decimal(10, 2)
+  monto_descontado  Decimal             @db.Decimal(10, 2)
+  razon_manual      String?
+  autorizado_por_id String?
+  autorizado_por    User?               @relation("DiscountAuthorizedBy", fields: [autorizado_por_id], references: [id])
+  created_at        DateTime            @default(now())
+}
+
+// 9. Movimiento de Inventario (InventoryMovement) — RF-14
+model InventoryMovement {
+  id         String                @id @default(uuid())
+  product_id String
+  product    Product               @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  tipo       InventoryMovementType
+  cantidad   Int
+  motivo     String?
+  usuario_id String?
+  usuario    User?                 @relation(fields: [usuario_id], references: [id])
+  fecha      DateTime              @default(now())
+}
+
+// 10. Registro de Actividad (ActivityLog) — RF-06, RF-10, RF-19
 model ActivityLog {
-  id        String   @id @default(uuid())
-  action    String
-  entity    String
-  entityId  String?
-  details   Json?
-  createdAt DateTime @default(now())
+  id               String   @id @default(uuid())
+  order_id         String?
+  order            Order?   @relation(fields: [order_id], references: [id], onDelete: SetNull)
+  usuario_id       String?
+  usuario          User?    @relation(fields: [usuario_id], references: [id], onDelete: SetNull)
+  accion           String   // CAMBIO_ESTADO, DESCUENTO_MANUAL, CREACION_PEDIDO, etc.
+  detalle_anterior Json?
+  detalle_nuevo    Json?
+  fecha            DateTime @default(now())
 }
