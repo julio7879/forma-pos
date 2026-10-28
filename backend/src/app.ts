@@ -1,17 +1,40 @@
 import express from 'express';
 import cors from 'cors';
-import { errorHandler } from './middlewares/error.middleware';
+import { errorHandler, notFoundHandler } from './middlewares/error.middleware';
 
 // Configuración de Express, CORS y montaje de rutas /api/*
 export const app = express();
 
-app.use(cors());
-app.use(express.json());
+const allowedOrigins = process.env.CLIENT_ORIGIN
+  ? process.env.CLIENT_ORIGIN.split(',').map((o) => o.trim())
+  : ['http://localhost:5173', 'http://localhost:3000'];
 
-// Endpoint de verificación de estado
+app.use(
+  cors({
+    origin: allowedOrigins,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-user-role']
+  })
+);
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Endpoint de verificación de salud y estado del servidor
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.status(200).json({
+    success: true,
+    data: {
+      status: 'ok',
+      service: 'forma-backend',
+      timestamp: new Date().toISOString()
+    }
+  });
 });
+
+// Captura de rutas inexistentes (404)
+app.use(notFoundHandler);
 
 // Middleware centralizado de errores
 app.use(errorHandler);
