@@ -1,5 +1,3 @@
-import React from 'react';
-
 export function App() {
   return (
     <div className="min-h-screen bg-canvas text-graphite font-sans">
