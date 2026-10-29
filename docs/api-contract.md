@@ -1,21 +1,15 @@
 # Contrato de API - FORMA POS
 
-<<<<<<< Updated upstream
 > **Responsables:** Julio + Yeimer  
 > **Base URL:** `/api`
-=======
 Este documento define los endpoints, payloads JSON y códigos de respuesta para el catálogo de productos personalizados y la gestión de pedidos de FORMA, alineados con la arquitectura oficial v0.3 y los modelos `Product` y `ProductOption` del esquema Prisma.
->>>>>>> Stashed changes
 
 Documento vivo de endpoints, payloads y códigos de respuesta estandarizados.
 
-<<<<<<< Updated upstream
 ## Estructura de Respuestas
-=======
 ## 1. Estructura base de respuestas
 
 ### Respuesta exitosa
->>>>>>> Stashed changes
 
 ### Éxito
 ```json
@@ -25,12 +19,9 @@ Documento vivo de endpoints, payloads y códigos de respuesta estandarizados.
 }
 ```
 
-<<<<<<< Updated upstream
 ### Error
-=======
 ### Respuesta de error
 
->>>>>>> Stashed changes
 ```json
 {
   "success": false,
@@ -41,7 +32,6 @@ Documento vivo de endpoints, payloads y códigos de respuesta estandarizados.
 }
 ```
 
-<<<<<<< Updated upstream
 ## Módulos Principales
 - `/api/products` - CRUD catálogo, personalizaciones y stock
 - `/api/orders` - Creación WEB/POS, snapshots y tracking
@@ -49,7 +39,6 @@ Documento vivo de endpoints, payloads y códigos de respuesta estandarizados.
 - `/api/promotions` - Validación de códigos y descuentos
 - `/api/dashboard` - Métricas agregadas y actividad
 - `/api/users` - Gestión de usuarios y roles
-=======
 ---
 
 ## 2. Catálogo de productos (`/api/products`)
@@ -410,4 +399,3 @@ Consulta el estado y el detalle de un pedido mediante su identificador.
 ---
 
 **Nota:** Este contrato define la estructura esperada de las solicitudes y respuestas. Antes de implementar o fusionar los cambios, se deben verificar los nombres exactos de los campos, las relaciones, los tipos de datos y los valores de los enums contra la arquitectura oficial v0.3 y el esquema Prisma del proyecto.
->>>>>>> Stashed changes
