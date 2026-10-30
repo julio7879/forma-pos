@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import { errorHandler, notFoundHandler } from './middlewares/error.middleware';
 import { orderRouter } from './modules/orders/order.routes';
+import { promotionRouter } from './modules/promotions/promotion.routes';
 
 // Configuración de Express, CORS y montaje de rutas /api/*
 export const app = express();
@@ -36,6 +37,7 @@ app.get('/api/health', (_req, res) => {
 
 // Rutas de módulos del negocio
 app.use('/api/orders', orderRouter);
+app.use('/api/promotions', promotionRouter);
 
 // Captura de rutas inexistentes (404)
 app.use(notFoundHandler);
