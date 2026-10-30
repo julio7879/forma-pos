@@ -85,11 +85,16 @@ export async function updateOrderStatusHandler(
 ) {
   try {
     const { id } = req.params;
-    const { estado_pedido, usuario_id } = req.body;
+    const { estado_pedido, usuario_id, motivo } = req.body ?? {};
+    const rawHeader = req.headers['x-user-role'];
+    const userRole = typeof rawHeader === 'string' ? rawHeader.trim().toUpperCase() : undefined;
+
     const updated = await orderService.updateOrderStatus(
       id,
       estado_pedido as OrderStatus,
-      usuario_id
+      usuario_id,
+      motivo,
+      userRole
     );
     return res.status(200).json({
       success: true,
