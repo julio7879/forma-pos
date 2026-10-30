@@ -612,7 +612,9 @@ export async function trackOrderByReference(
 export async function updateOrderStatus(
   idOrRef: string,
   nuevoEstado: OrderStatus,
-  usuarioId?: string
+  usuarioId?: string,
+  motivo?: string,
+  userRole?: string
 ) {
   const validStatuses: OrderStatus[] = [
     OrderStatus.RECIBIDO,
@@ -634,6 +636,9 @@ export async function updateOrderStatus(
     where: {
       OR: [{ id: idOrRef.trim() }, { referencia: idOrRef.trim().toUpperCase() }],
     },
+    include: {
+      payments: true,
+    },
   });
 
   if (!existing) {
@@ -644,7 +649,116 @@ export async function updateOrderStatus(
     );
   }
 
+  const estadoActual = existing.estado_pedido;
+
+  // 1. Candado de Estados Terminales (ENTREGADO y CANCELADO son inmutables)
+  if (estadoActual === OrderStatus.ENTREGADO) {
+    throw new AppError(
+      'El pedido ya fue entregado al cliente y no admite más cambios de estado.',
+      400,
+      'TERMINAL_ORDER_STATUS'
+    );
+  }
+
+  if (estadoActual === OrderStatus.CANCELADO) {
+    throw new AppError(
+      'El pedido se encuentra cancelado y no admite reactivación ni cambios de estado.',
+      400,
+      'TERMINAL_ORDER_STATUS'
+    );
+  }
+
+  // 2. Si el nuevo estado es el mismo que el actual
+  if (estadoActual === nuevoEstado) {
+    throw new AppError(
+      `El pedido ya se encuentra en estado "${nuevoEstado}".`,
+      400,
+      'SAME_ORDER_STATUS'
+    );
+  }
+
+  // 3. Máquina de Transiciones Legales (RF-05)
+  const transicionesValidas: Record<OrderStatus, OrderStatus[]> = {
+    [OrderStatus.RECIBIDO]: [OrderStatus.EN_PREPARACION, OrderStatus.CANCELADO],
+    [OrderStatus.EN_PREPARACION]: [OrderStatus.LISTO, OrderStatus.CANCELADO],
+    [OrderStatus.LISTO]: [OrderStatus.ENTREGADO, OrderStatus.CANCELADO],
+    [OrderStatus.ENTREGADO]: [],
+    [OrderStatus.CANCELADO]: [],
+  };
+
+  const estadosPermitidos = transicionesValidas[estadoActual] || [];
+  if (!estadosPermitidos.includes(nuevoEstado)) {
+    throw new AppError(
+      `Transición de estado ilegal: no se permite pasar de "${estadoActual}" a "${nuevoEstado}". Transiciones válidas desde "${estadoActual}": ${estadosPermitidos.join(', ')}.`,
+      400,
+      'INVALID_STATUS_TRANSITION'
+    );
+  }
+
+  // 4. Control de Autorización por Rol en el Servidor (RF-12)
+  if (userRole) {
+    const rol = userRole.toUpperCase();
+    if (nuevoEstado === OrderStatus.EN_PREPARACION || nuevoEstado === OrderStatus.LISTO) {
+      if (!['ADMIN', 'SUPERVISOR', 'PREPARADOR'].includes(rol)) {
+        throw new AppError(
+          `El rol ${rol} no tiene autorización para cambiar pedidos a "${nuevoEstado}". Requiere ADMIN, SUPERVISOR o PREPARADOR.`,
+          403,
+          'FORBIDDEN'
+        );
+      }
+    } else if (nuevoEstado === OrderStatus.ENTREGADO) {
+      if (!['ADMIN', 'SUPERVISOR', 'VENDEDOR'].includes(rol)) {
+        throw new AppError(
+          `El rol ${rol} no tiene autorización para marcar pedidos como "${nuevoEstado}". Requiere ADMIN, SUPERVISOR o VENDEDOR.`,
+          403,
+          'FORBIDDEN'
+        );
+      }
+    } else if (nuevoEstado === OrderStatus.CANCELADO) {
+      if (!['ADMIN', 'SUPERVISOR'].includes(rol)) {
+        throw new AppError(
+          `Solo administradores o supervisores tienen autorización para cancelar pedidos.`,
+          403,
+          'FORBIDDEN'
+        );
+      }
+    }
+  }
+
+  // 5. Candado de Negocio para Entrega: No entregar con saldo pendiente
+  if (nuevoEstado === OrderStatus.ENTREGADO) {
+    const totalPagadoNum = Number(existing.total_pagado);
+    const totalFinalNum = Number(existing.total_final);
+    const saldoPendiente = Math.max(0, totalFinalNum - totalPagadoNum);
+
+    if (existing.estado_pago !== PaymentStatus.PAGADO && saldoPendiente > 0) {
+      throw new AppError(
+        `No se puede entregar el pedido: presenta un saldo pendiente de $${saldoPendiente.toLocaleString('es-CO')} (Estado de pago: ${existing.estado_pago}). Debe registrarse el pago total antes de la entrega.`,
+        400,
+        'ORDER_PENDING_PAYMENT'
+      );
+    }
+  }
+
+  // 6. Candado de Negocio para Cancelación: Motivo obligatorio
+  if (nuevoEstado === OrderStatus.CANCELADO) {
+    if (!motivo || !motivo.trim()) {
+      throw new AppError(
+        'Para cancelar un pedido es obligatorio proporcionar el campo "motivo".',
+        400,
+        'CANCELLATION_REASON_REQUIRED'
+      );
+    }
+  }
+
+  // 7. Actualización Transaccional y Auditoría (RF-13)
   const updated = await prisma.$transaction(async (tx) => {
+    // Validar existencia de usuario para evitar fallo de Foreign Key (P2003)
+    let validUserId: string | null = null;
+    if (usuarioId && typeof usuarioId === 'string' && usuarioId.trim()) {
+      const userFound = await tx.user.findUnique({ where: { id: usuarioId.trim() } });
+      if (userFound) validUserId = userFound.id;
+    }
     const order = await tx.order.update({
       where: { id: existing.id },
       data: { estado_pedido: nuevoEstado },
@@ -658,10 +772,16 @@ export async function updateOrderStatus(
     await tx.activityLog.create({
       data: {
         order_id: existing.id,
-        usuario_id: usuarioId || null,
+        usuario_id: validUserId,
         accion: 'CAMBIO_ESTADO',
-        detalle_anterior: { estado_pedido: existing.estado_pedido },
-        detalle_nuevo: { estado_pedido: nuevoEstado },
+        detalle_anterior: {
+          estado_pedido: estadoActual,
+        },
+        detalle_nuevo: {
+          estado_pedido: nuevoEstado,
+          motivo: motivo?.trim() || null,
+          actualizado_por_rol: userRole || null,
+        },
       },
     });
 
