@@ -1,4 +1,3 @@
-// Esta configuracion la tiene que modificar sofia
 
 /** @type {import('tailwindcss').Config} */
 export default {
