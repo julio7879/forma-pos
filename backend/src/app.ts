@@ -4,6 +4,7 @@ import { errorHandler, notFoundHandler } from './middlewares/error.middleware';
 import { orderRouter } from './modules/orders/order.routes';
 import { paymentRouter } from './modules/payments/payment.routes';
 import { promotionRouter } from './modules/promotions/promotion.routes';
+import { productRouter } from './modules/products/product.routes';
 
 // Configuración de Express, CORS y montaje de rutas /api/*
 export const app = express();
@@ -40,6 +41,7 @@ app.get('/api/health', (_req, res) => {
 app.use('/api/orders', orderRouter);
 app.use('/api/payments', paymentRouter);
 app.use('/api/promotions', promotionRouter);
+app.use('/api/products', productRouter);
 
 // Captura de rutas inexistentes (404)
 app.use(notFoundHandler);
