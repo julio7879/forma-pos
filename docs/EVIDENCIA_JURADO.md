@@ -270,5 +270,6 @@ Running generate... (Use --skip-generate to skip the generators)
 - **En Revisión / Listas para Merge (In Review):**
   - #34 Implementar endpoint de Dashboard Operativo y KPIs GET /api/dashboard/stats (**[PR #40](https://github.com/julio7879/forma-pos/pull/40)** — Yeimer)
 - **En Progreso (In Progress):**
+  - #41 Implementar panel de gestión de pedidos, detalle de taller y transición de estados (**[Issue #41](https://github.com/julio7879/forma-pos/issues/41)** — Esneider)
   - #35 Ejecutar y documentar la suite de pruebas funcionales de endpoints en docs/qa-test-matrix.md (**Thomas**)
   - #36 Auditar flujos de usuario en prototipo interactivo y checklist demo jurado (**Thomas**)
