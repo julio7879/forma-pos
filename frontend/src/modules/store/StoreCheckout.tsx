@@ -7,7 +7,8 @@ import { Button } from '../../components/ui/Button';
 interface StoreCheckoutProps {
   items: CartItem[];
   onBack: () => void;
-  onConfirm: (data: any) => void;
+  // Cambiamos el callback para que sea asíncrono y devuelva el pedido creado
+  onConfirm: (data: { nombre: string; contacto: string; fecha: string }) => Promise<void>;
 }
 
 export const StoreCheckout = ({ items, onBack, onConfirm }: StoreCheckoutProps) => {
@@ -18,24 +19,20 @@ export const StoreCheckout = ({ items, onBack, onConfirm }: StoreCheckoutProps) 
   const subtotal = items.reduce((acc, item) => acc + item.unitPrice * item.quantity, 0);
   const anticipoSugerido = Math.round(subtotal / 2);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.nombre || !form.contacto) return;
 
     setLoading(true);
     
-    // Simulamos el envío al backend
-    setTimeout(() => {
-      onConfirm({
-        cliente_nombre: form.nombre,
-        cliente_contacto: form.contacto,
-        fecha_deseada: form.fecha,
-        items,
-        total: subtotal
-      });
-      setLoading(false);
+    try {
+      // El componente padre (App.tsx) será el encargado de llamar al backend
+      await onConfirm(form);
       setSuccess(true);
-    }, 1000);
+    } catch (error) {
+      alert('Hubo un error al procesar tu pedido. Por favor intenta de nuevo.');
+      setLoading(false);
+    }
   };
 
   if (success) {

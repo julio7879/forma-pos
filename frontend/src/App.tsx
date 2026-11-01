@@ -5,7 +5,8 @@ import { ProductConfigurator } from './modules/store/ProductConfigurator';
 import { OrderTracking } from './modules/store/OrderTracking';
 import { StoreCart, CartItem } from './modules/store/StoreCart';
 import { StoreCheckout } from './modules/store/StoreCheckout';
-import { Product } from './types';
+import { Product, CreateOrderInput } from './types';
+import { orderService } from './services/apiClient'; // <-- Importamos el servicio oficial
 
 export function App() {
   // Estados de navegación
@@ -16,7 +17,6 @@ export function App() {
 
   // Lógica del Carrito
   const handleAddToCart = (item: any) => {
-    // Creamos una firma única para agrupar productos con las mismas opciones
     const signature = `${item.product.id}-${JSON.stringify(item.selections)}-${item.customText}`;
     
     const detailsString = [
@@ -40,8 +40,8 @@ export function App() {
       }];
     });
     
-    setStoreView('catalog'); // Volver al catálogo
-    setIsCartOpen(true);      // Abrir el carrito para confirmar
+    setStoreView('catalog');
+    setIsCartOpen(true);
   };
 
   const updateQuantity = (id: string, delta: number) => {
@@ -57,14 +57,26 @@ export function App() {
     setCartItems(prev => prev.filter(item => item.id !== id));
   };
 
-  const handleConfirmOrder = (data: any) => {
-    // Aquí luego irá el fetch() al backend real
-    console.log("Pedido enviado al backend:", data);
-    // Por ahora, limpiamos el carrito y mostramos éxito
-    setTimeout(() => {
-      setCartItems([]);
-      setStoreView('catalog');
-    }, 2000); // Le damos 2 segundos al componente Checkout para mostrar el mensaje de éxito
+  // --- CONEXIÓN OFICIAL CON EL BACKEND (Feedback de Julio) ---
+  const handleConfirmOrder = async (data: { nombre: string; contacto: string; fecha: string }) => {
+    // Construimos el payload usando los tipos oficiales CreateOrderInput
+    const payload: CreateOrderInput = {
+      origen: 'WEB',
+      cliente_nombre: data.nombre,
+      cliente_contacto: data.contacto,
+      fecha_deseada: data.fecha || undefined,
+      items: cartItems.map(item => ({
+        product_id: item.productId,
+        cantidad: item.quantity,
+        opciones: [{ valor: item.details }] // Enviamos el resumen como opción por ahora
+      }))
+    };
+
+    // Llamamos al servicio oficial que maneja el fetch y el fallback
+    await orderService.createOrder(payload);
+
+    // Al terminar con éxito, limpiamos el carrito
+    setCartItems([]);
   };
 
   return (
@@ -96,7 +108,6 @@ export function App() {
         />
       )}
 
-      {/* Carrito Flotante */}
       <StoreCart 
         isOpen={isCartOpen} 
         onClose={() => setIsCartOpen(false)} 
