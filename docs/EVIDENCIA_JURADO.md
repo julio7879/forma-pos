@@ -200,6 +200,52 @@ Running generate... (Use --skip-generate to skip the generators)
 
 ---
 
+## 🛍️ Hito 7: Frontend Tienda Web Pública (Catálogo, Configurador y Tracking)
+- **Fecha:** 1 de noviembre de 2026
+- **Estado:** 🟣 PR #39 integrado y fusionado en `develop` (commit `c39866f`)
+- **Responsable:** Esneider Nava (Diseño + Frontend Store)
+- **Issue vinculada:** [#19](https://github.com/julio7879/forma-pos/issues/19)
+- **Pull Request:** [PR #39](https://github.com/julio7879/forma-pos/pull/39)
+
+### 1. Aportes Técnicos e Integración
+1. **Catálogo de Tienda (`StoreCatalog.tsx` — RF-01):**
+   - Grid responsive con tarjetas de producto artesanales y badge de categoría.
+   - Consumo del servicio oficial `productService.getProducts()` de `apiClient.ts`.
+2. **Configurador Visual de Producto (`ProductConfigurator.tsx` — RF-02):**
+   - Selección interactiva de opciones y variantes con recargos dinámicos en tiempo real.
+   - Candado de Negocio RF-02: Totales en frontend presentados como estimaciones previas al cálculo estricto en backend.
+3. **Carrito y Checkout Conectado (`StoreCart.tsx`, `StoreCheckout.tsx` — RF-03):**
+   - Conexión con `orderService.createOrder` enviando `CreateOrderInput` con `origen: 'WEB'`.
+   - Limpieza automática de carrito y retroalimentación de pedido exitoso.
+4. **Seguimiento de Pedidos (`OrderTracking.tsx` — RF-08):**
+   - Stepper visual unidireccional de 4 estados: `RECIBIDO` ➔ `EN_PREPARACION` ➔ `LISTO` ➔ `ENTREGADO`.
+   - Búsqueda por referencia (ej. `FORMA-1001`) con badge financiero independiente (`estado_pago`).
+
+---
+
+## 📟 Hito 8: Frontend Terminal de Punto de Venta (POS) y Enrutador Multiruta
+- **Fecha:** 1 de noviembre de 2026
+- **Estado:** 🟣 PR #38 integrado y fusionado en `develop` (commit `ba379ef`)
+- **Responsable:** Esneider Nava (Frontend POS) y Julio Vega (Líder / Integración)
+- **Issue vinculada:** [#20](https://github.com/julio7879/forma-pos/issues/20)
+- **Pull Request:** [PR #38](https://github.com/julio7879/forma-pos/pull/38)
+
+### 1. Aportes Técnicos e Integración
+1. **Terminal de Venta Rápida (`PosRegister.tsx` — RF-03, RF-07):**
+   - Botonera táctil optimizada para mostrador con buscador predictivo y carga desde `productService`.
+   - Personalización ágil mediante modal `PosConfig.tsx` con opciones y recargos oficiales.
+2. **Carrito de Mostrador y Modal de Cobro (`PosCart.tsx`, `PaymentModal.tsx` — RF-06, RF-07):**
+   - Soporte de cobro total o anticipo parcial (50%) con cálculo automático de saldo pendiente.
+   - Métodos de pago oficiales: `EFECTIVO`, `TRANSFERENCIA` y `DEMO`.
+   - Conexión al backend vía `orderService.createOrder` (`origen: 'POS'`, desglose en `pago_inicial`).
+3. **Enrutador Maestro y Separación de Portales (`App.tsx` — RF-12):**
+   - Desacople limpio de portales: `StoreApp` (público) y `PosApp` (privado cajero).
+   - Detección canónica de rutas (`/tienda`, `/pos`, `/admin`) y selector discreto para demostración de jurado.
+4. **Compilación y Control de Calidad:**
+   - 100% libre de errores TypeScript (`tsc -b && vite build`) en frontend y backend.
+
+---
+
 ## 📌 Estado Actual del Tablero Kanban (Fase 1 / 31 de Octubre)
 - **Completadas (Done):**
   - #1 Monorepo scaffolding
@@ -216,13 +262,13 @@ Running generate... (Use --skip-generate to skip the generators)
   - #23 Motor de promociones y validación de cupones (**[PR #29](https://github.com/julio7879/forma-pos/pull/29)**)
   - #27 Máquina de estados de pedidos y registro de anticipos/pagos (**[PR #30](https://github.com/julio7879/forma-pos/pull/30)**)
   - Release v0.1: Cimientos, DB, Pedidos y Tracking fusionados en `main` (**[PR #26](https://github.com/julio7879/forma-pos/pull/26)**)
+  - #15 Prototipo interactivo UI/UX y flujos en Lovable (**[PR #32](https://github.com/julio7879/forma-pos/pull/32)**)
+  - #17 Endpoints de catálogo de productos y opciones (**[PR #33](https://github.com/julio7879/forma-pos/pull/33)**)
+  - #19 Maquetar vistas de Tienda Web: catálogo y configurador (**[PR #39](https://github.com/julio7879/forma-pos/pull/39)**)
+  - #20 Maquetar vistas de POS: terminal de venta rápida y cobro (**[PR #38](https://github.com/julio7879/forma-pos/pull/38)**)
+  - #31 Tipos TypeScript compartidos, cliente HTTP y datos mock frontend (**[PR #37](https://github.com/julio7879/forma-pos/pull/37)**)
 - **En Revisión / Listas para Merge (In Review):**
-  - #15 Prototipo interactivo UI/UX y flujos en Lovable (**[PR #32](https://github.com/julio7879/forma-pos/pull/32)** - Feedback técnico aprobado en GitHub)
-  - #17 Endpoints de catálogo de productos y opciones (**[PR #33](https://github.com/julio7879/forma-pos/pull/33)** - Feedback técnico aprobado en GitHub)
+  - #34 Implementar endpoint de Dashboard Operativo y KPIs GET /api/dashboard/stats (**[PR #40](https://github.com/julio7879/forma-pos/pull/40)** — Yeimer)
 - **En Progreso (In Progress):**
-  - #31 Tipos TypeScript compartidos, cliente HTTP y datos mock frontend (**Julio**)
-  - #19 Maquetar vistas de Tienda Web: catálogo y configurador (**Esneider** — reasignada por ausencia temporal de Sofía)
-  - #20 Maquetar vistas de POS: terminal de venta rápida y cobro (**Esneider**)
-  - #34 Implementar endpoint de Dashboard Operativo y KPIs `GET /api/dashboard/stats` (**Yeimer** — asumiendo frente de datos por ausencia de Duvan)
-  - #35 Ejecutar y documentar la suite de pruebas funcionales de endpoints en `docs/qa-test-matrix.md` (**Thomas**)
+  - #35 Ejecutar y documentar la suite de pruebas funcionales de endpoints en docs/qa-test-matrix.md (**Thomas**)
   - #36 Auditar flujos de usuario en prototipo interactivo y checklist demo jurado (**Thomas**)
