@@ -1,17 +1,18 @@
 import { useState } from 'react';
-import { formatCOP } from './types';
+import { PaymentMethod } from '../../types';
+import { formatCOP } from '../../utils/formatters';
 import { Button } from '../../components/ui/Button';
 
 interface PaymentModalProps {
   total: number;
   initialType?: 'anticipo' | 'total';
   onClose: () => void;
-  onSuccess: (data: any) => void;
+  onSuccess: (data: { type: 'anticipo' | 'total'; amountToCharge: number; method: PaymentMethod; change: number }) => void;
 }
 
 export function PaymentModal({ total, initialType = 'anticipo', onClose, onSuccess }: PaymentModalProps) {
   const [payType, setPayType] = useState<'anticipo' | 'total'>(initialType);
-  const [method, setMethod] = useState<'efectivo' | 'tarjeta'>('efectivo');
+  const [method, setMethod] = useState<PaymentMethod>('EFECTIVO');
   const [cashGiven, setCashGiven] = useState<string>('');
 
   const amountToCharge = payType === 'anticipo' ? Math.round(total / 2) : total;
@@ -48,12 +49,13 @@ export function PaymentModal({ total, initialType = 'anticipo', onClose, onSucce
           )}
         </div>
 
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          <Button variant={method === 'efectivo' ? 'primary' : 'outline'} onClick={() => setMethod('efectivo')}>💵 Efectivo</Button>
-          <Button variant={method === 'tarjeta' ? 'primary' : 'outline'} onClick={() => setMethod('tarjeta')}>💳 Tarjeta</Button>
+        <div className="mt-4 grid grid-cols-3 gap-2">
+          <Button variant={method === 'EFECTIVO' ? 'primary' : 'outline'} onClick={() => setMethod('EFECTIVO')} className="text-xs">💵 Efectivo</Button>
+          <Button variant={method === 'TRANSFERENCIA' ? 'primary' : 'outline'} onClick={() => setMethod('TRANSFERENCIA')} className="text-xs">💳 Transf.</Button>
+          <Button variant={method === 'DEMO' ? 'primary' : 'outline'} onClick={() => setMethod('DEMO')} className="text-xs">📱 Demo</Button>
         </div>
 
-        {method === 'efectivo' && (
+        {method === 'EFECTIVO' && (
           <div className="mt-4 flex items-center justify-between gap-3 bg-ink/30 p-3 rounded-xl border border-cream/10">
             <span className="text-xs">Efectivo recibido:</span>
             <input type="number" value={cashGiven} onChange={(e) => setCashGiven(e.target.value)} className="w-24 rounded-lg bg-ink border border-cream/20 px-2 py-1 text-right text-sm" />
@@ -62,7 +64,7 @@ export function PaymentModal({ total, initialType = 'anticipo', onClose, onSucce
 
         <div className="mt-6 flex gap-3">
           <Button variant="outline" className="flex-1" onClick={onClose}>Volver</Button>
-          <Button variant="primary" className="flex-1" disabled={method === 'efectivo' && cashNumber > 0 && cashNumber < amountToCharge} onClick={() => onSuccess({ type: payType, amountToCharge, pendingBalance, method, change })}>
+          <Button variant="primary" className="flex-1" disabled={method === 'EFECTIVO' && cashNumber > 0 && cashNumber < amountToCharge} onClick={() => onSuccess({ type: payType, amountToCharge, method, change })}>
             Confirmar Cobro
           </Button>
         </div>

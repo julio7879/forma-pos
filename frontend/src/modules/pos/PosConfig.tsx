@@ -1,22 +1,57 @@
 import { useState } from 'react';
-import { Product, Selection, calculateUnitPrice, formatCOP } from './types';
+import { Product, OrderOptionSnapshot } from '../../types';
+import { formatCOP } from '../../utils/formatters'; 
 import { Button } from '../../components/ui/Button';
 
 interface PosConfigProps {
   product: Product;
   onClose: () => void;
-  onAdd: (selection: Selection, finalPrice: number) => void;
+  onAdd: (product: Product, quantity: number, finalPrice: number, snapshots: OrderOptionSnapshot[]) => void;
 }
 
 export function PosConfig({ product, onClose, onAdd }: PosConfigProps) {
-  const [sel, setSel] = useState<Selection>({
-    color: product.colors[0]?.id ?? '',
-    size: product.sizes[0]?.id ?? '',
-    finish: product.finishes[0]?.id ?? '',
-    text: '',
+  const [selections, setSelections] = useState<Record<string, string>>({});
+  const [customText, setCustomText] = useState('');
+  
+  const TEXT_FEE = 8000;
+
+  const handleSelect = (optionId: string, value: string) => {
+    setSelections(prev => ({ ...prev, [optionId]: value }));
+  };
+
+  let totalExtras = 0;
+  const snapshots: OrderOptionSnapshot[] = [];
+
+  product.options?.forEach(opt => {
+    const selectedValue = selections[opt.id];
+    if (selectedValue) {
+      const valueObj = opt.valores_recargos.find(v => v.valor === selectedValue);
+      if (valueObj && valueObj.recargo > 0) totalExtras += valueObj.recargo;
+      
+      snapshots.push({
+        option_id: opt.id,
+        nombre: opt.nombre,
+        valor: selectedValue,
+        recargo: valueObj?.recargo || 0
+      });
+    }
   });
 
-  const unitPrice = calculateUnitPrice(product, sel);
+  const textExtra = customText.trim().length > 0 ? TEXT_FEE : 0;
+  if (textExtra > 0) {
+    snapshots.push({ nombre: 'Texto personalizado', valor: customText, recargo: TEXT_FEE });
+  }
+
+  const unitPrice = product.precio_base + totalExtras + textExtra;
+
+  const handleAdd = () => {
+    const missingRequired = product.options?.find(opt => opt.obligatorio && !selections[opt.id]);
+    if (missingRequired) {
+      alert(`Por favor selecciona una opción para: ${missingRequired.nombre}`);
+      return;
+    }
+    onAdd(product, 1, unitPrice, snapshots);
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/80 backdrop-blur-sm">
@@ -25,50 +60,34 @@ export function PosConfig({ product, onClose, onAdd }: PosConfigProps) {
         <div className="flex items-start justify-between border-b border-cream/10 pb-4">
           <div>
             <p className="text-xs uppercase tracking-widest text-accent font-medium">Personalizar pieza</p>
-            <h2 className="text-2xl font-serif font-bold text-cream mt-1">{product.name}</h2>
+            <h2 className="text-2xl font-serif font-bold text-cream mt-1">{product.nombre}</h2>
           </div>
           <button onClick={onClose} className="text-cream/60 hover:text-cream">✕</button>
         </div>
 
         <div className="flex-1 overflow-y-auto space-y-6 py-4 pr-1">
-          {/* Color */}
-          <fieldset>
-            <legend className="text-xs font-semibold uppercase tracking-wider text-cream/70 mb-2">Color / Tinta</legend>
-            <div className="flex flex-wrap gap-2">
-              {product.colors.map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => setSel({ ...sel, color: c.id })}
-                  className={`flex items-center gap-2 rounded-xl border px-3.5 py-2 text-sm transition-all ${
-                    sel.color === c.id ? 'border-accent bg-accent/15 ring-1 ring-accent' : 'border-cream/15 bg-ink/30'
-                  }`}
-                >
-                  {c.swatch && <span className={`size-4 rounded-full border border-cream/20 ${c.swatch}`} />}
-                  {c.label}
-                </button>
-              ))}
-            </div>
-          </fieldset>
+          {product.options?.map(opt => (
+            <fieldset key={opt.id}>
+              <legend className="text-xs font-semibold uppercase tracking-wider text-cream/70 mb-2">
+                {opt.nombre} {opt.obligatorio && <span className="text-danger">*</span>}
+              </legend>
+              <div className="flex flex-wrap gap-2">
+                {opt.valores_recargos.map(v => (
+                  <button
+                    key={v.valor}
+                    onClick={() => handleSelect(opt.id, v.valor)}
+                    className={`flex items-center gap-2 rounded-xl border px-3.5 py-2 text-sm transition-all ${
+                      selections[opt.id] === v.valor ? 'border-accent bg-accent/15 ring-1 ring-accent' : 'border-cream/15 bg-ink/30'
+                    }`}
+                  >
+                    {v.valor}
+                    {v.recargo > 0 && <span className="text-xs text-accent">+{formatCOP(v.recargo)}</span>}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+          ))}
 
-          {/* Talla */}
-          <fieldset>
-            <legend className="text-xs font-semibold uppercase tracking-wider text-cream/70 mb-2">Talla / Medida</legend>
-            <div className="flex flex-wrap gap-2">
-              {product.sizes.map((s) => (
-                <button
-                  key={s.id}
-                  onClick={() => setSel({ ...sel, size: s.id })}
-                  className={`rounded-xl border px-4 py-2 text-sm transition-all ${
-                    sel.size === s.id ? 'border-accent bg-accent/15 ring-1 ring-accent' : 'border-cream/15 bg-ink/30'
-                  }`}
-                >
-                  {s.label} {s.extra > 0 && <span className="text-xs text-accent">+{formatCOP(s.extra)}</span>}
-                </button>
-              ))}
-            </div>
-          </fieldset>
-
-          {/* Texto */}
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-cream/70 mb-2">
               Texto personalizado (Opcional)
@@ -77,11 +96,11 @@ export function PosConfig({ product, onClose, onAdd }: PosConfigProps) {
               type="text"
               maxLength={30}
               placeholder="Ej. Juan Pérez · 2026"
-              value={sel.text}
-              onChange={(e) => setSel({ ...sel, text: e.target.value })}
+              value={customText}
+              onChange={(e) => setCustomText(e.target.value)}
               className="w-full rounded-xl border border-cream/20 bg-ink/50 px-4 py-2.5 text-sm text-cream focus:border-accent focus:outline-none"
             />
-            <div className="mt-1 text-xs text-cream/50">Añadir texto personalizado: +{formatCOP(8000)}</div>
+            <div className="mt-1 text-xs text-cream/50">Añadir texto personalizado: +{formatCOP(TEXT_FEE)}</div>
           </div>
         </div>
 
@@ -92,7 +111,7 @@ export function PosConfig({ product, onClose, onAdd }: PosConfigProps) {
           </div>
           <div className="flex gap-3">
             <Button variant="outline" className="flex-1" onClick={onClose}>Cancelar</Button>
-            <Button variant="primary" className="flex-1" onClick={() => onAdd(sel, unitPrice)}>
+            <Button variant="primary" className="flex-1" onClick={handleAdd}>
               Añadir a la venta
             </Button>
           </div>
