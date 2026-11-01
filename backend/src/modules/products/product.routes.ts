@@ -1,9 +1,9 @@
 import { Router } from 'express';
-import { getProductHandler, listProductsHandler } from './product.controller';
+import { productController } from './product.controller';
 
-export const productRouter = Router();
+const productRouter = Router();
 
-productRouter.get('/', listProductsHandler);
-productRouter.get('/:id', getProductHandler);
+productRouter.get('/', productController.list);
+productRouter.get('/:id', productController.getById);
 
 export default productRouter;
