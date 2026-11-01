@@ -1,7 +1,7 @@
 import React from 'react';
 
 // Definimos las variantes y tamaños permitidos
-type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'danger';
+type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'danger' | 'ghost';
 type ButtonSize = 'sm' | 'md' | 'lg';
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -22,6 +22,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       secondary: 'bg-surface text-cream hover:bg-surface/90',
       outline: 'border border-accent text-accent hover:bg-accent/10',
       danger: 'bg-danger text-cream hover:bg-danger/90',
+      ghost: 'bg-transparent text-cream hover:bg-surface/50',
     };
 
     // Estilos según el tamaño

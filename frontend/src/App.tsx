@@ -1,122 +1,80 @@
-import { useState } from 'react';
-import { StoreLayout } from './modules/store/StoreLayout';
-import { StoreCatalog } from './modules/store/StoreCatalog';
-import { ProductConfigurator } from './modules/store/ProductConfigurator';
-import { OrderTracking } from './modules/store/OrderTracking';
-import { StoreCart, CartItem } from './modules/store/StoreCart';
-import { StoreCheckout } from './modules/store/StoreCheckout';
-import { Product, CreateOrderInput } from './types';
-import { orderService } from './services/apiClient'; // <-- Importamos el servicio oficial
+import { useState, useEffect } from 'react';
+import { StoreApp } from './modules/store/StoreApp';
+import { PosApp } from './modules/pos/PosApp';
+
+export type ActivePortal = 'store' | 'pos' | 'admin';
 
 export function App() {
-  // Estados de navegación
-  const [storeView, setStoreView] = useState<'catalog' | 'product' | 'tracking' | 'checkout'>('catalog');
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [isCartOpen, setIsCartOpen] = useState(false);
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [activePortal, setActivePortal] = useState<ActivePortal>(() => {
+    const path = window.location.pathname.toLowerCase();
+    if (path.startsWith('/pos')) return 'pos';
+    if (path.startsWith('/admin')) return 'admin';
+    return 'store';
+  });
 
-  // Lógica del Carrito
-  const handleAddToCart = (item: any) => {
-    const signature = `${item.product.id}-${JSON.stringify(item.selections)}-${item.customText}`;
-    
-    const detailsString = [
-      ...item.selections.map((s: any) => `${s.nombre}: ${s.valor}`),
-      item.customText ? `Texto: "${item.customText}"` : null
-    ].filter(Boolean).join(' · ');
-
-    setCartItems(prev => {
-      const existing = prev.find(i => i.id === signature);
-      if (existing) {
-        return prev.map(i => i.id === signature ? { ...i, quantity: i.quantity + 1 } : i);
-      }
-      return [...prev, {
-        id: signature,
-        productId: item.product.id,
-        nombre: item.product.nombre,
-        imagen_url: item.product.imagen_url || '',
-        unitPrice: item.unitPrice,
-        quantity: 1,
-        details: detailsString
-      }];
-    });
-    
-    setStoreView('catalog');
-    setIsCartOpen(true);
-  };
-
-  const updateQuantity = (id: string, delta: number) => {
-    setCartItems(prev => prev.map(item => {
-      if (item.id === id) {
-        return { ...item, quantity: Math.max(1, item.quantity + delta) };
-      }
-      return item;
-    }));
-  };
-
-  const removeItem = (id: string) => {
-    setCartItems(prev => prev.filter(item => item.id !== id));
-  };
-
-  // --- CONEXIÓN OFICIAL CON EL BACKEND (Feedback de Julio) ---
-  const handleConfirmOrder = async (data: { nombre: string; contacto: string; fecha: string }) => {
-    // Construimos el payload usando los tipos oficiales CreateOrderInput
-    const payload: CreateOrderInput = {
-      origen: 'WEB',
-      cliente_nombre: data.nombre,
-      cliente_contacto: data.contacto,
-      fecha_deseada: data.fecha || undefined,
-      items: cartItems.map(item => ({
-        product_id: item.productId,
-        cantidad: item.quantity,
-        opciones: [{ valor: item.details }] // Enviamos el resumen como opción por ahora
-      }))
+  useEffect(() => {
+    const handlePopState = () => {
+      const path = window.location.pathname.toLowerCase();
+      if (path.startsWith('/pos')) setActivePortal('pos');
+      else if (path.startsWith('/admin')) setActivePortal('admin');
+      else setActivePortal('store');
     };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
-    // Llamamos al servicio oficial que maneja el fetch y el fallback
-    await orderService.createOrder(payload);
-
-    // Al terminar con éxito, limpiamos el carrito
-    setCartItems([]);
+  const navigatePortal = (portal: ActivePortal) => {
+    setActivePortal(portal);
+    const targetPath = portal === 'store' ? '/' : `/${portal}`;
+    window.history.pushState(null, '', targetPath);
   };
 
   return (
-    <StoreLayout 
-      currentView={storeView as any} 
-      onNavigate={(v) => setStoreView(v as any)}
-      cartCount={cartItems.reduce((acc, i) => acc + i.quantity, 0)}
-      onOpenCart={() => setIsCartOpen(true)}
-    >
-      {storeView === 'catalog' && (
-        <StoreCatalog onSelectProduct={(p) => { setSelectedProduct(p); setStoreView('product'); }} />
-      )}
+    <div className="relative min-h-screen bg-ink">
+      {/* Selector de navegación entre portales (RF-12 y Separación de Portales) */}
+      <aside
+        aria-label="Selector de portales"
+        className="fixed bottom-3 right-3 z-50 flex items-center gap-1 rounded-full border border-accent/40 bg-surface/90 px-3 py-1.5 text-xs text-cream shadow-2xl backdrop-blur-md"
+      >
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-accent mr-1">
+          Portal:
+        </span>
+        <button
+          onClick={() => navigatePortal('store')}
+          className={`rounded-full px-2.5 py-0.5 text-xs transition-colors ${
+            activePortal === 'store'
+              ? 'bg-accent font-semibold text-ink shadow-sm'
+              : 'text-cream/70 hover:text-cream'
+          }`}
+        >
+          Tienda
+        </button>
+        <button
+          onClick={() => navigatePortal('pos')}
+          className={`rounded-full px-2.5 py-0.5 text-xs transition-colors ${
+            activePortal === 'pos'
+              ? 'bg-accent font-semibold text-ink shadow-sm'
+              : 'text-cream/70 hover:text-cream'
+          }`}
+        >
+          POS
+        </button>
+        <button
+          onClick={() => navigatePortal('admin')}
+          className={`rounded-full px-2.5 py-0.5 text-xs transition-colors ${
+            activePortal === 'admin'
+              ? 'bg-accent font-semibold text-ink shadow-sm'
+              : 'text-cream/70 hover:text-cream'
+          }`}
+        >
+          Admin
+        </button>
+      </aside>
 
-      {storeView === 'product' && selectedProduct && (
-        <ProductConfigurator 
-          product={selectedProduct} 
-          onBack={() => setStoreView('catalog')} 
-          onAddToCart={handleAddToCart}
-        />
-      )}
-
-      {storeView === 'tracking' && <OrderTracking />}
-
-      {storeView === 'checkout' && (
-        <StoreCheckout 
-          items={cartItems} 
-          onBack={() => setStoreView('catalog')} 
-          onConfirm={handleConfirmOrder} 
-        />
-      )}
-
-      <StoreCart 
-        isOpen={isCartOpen} 
-        onClose={() => setIsCartOpen(false)} 
-        items={cartItems}
-        onUpdateQuantity={updateQuantity}
-        onRemove={removeItem}
-        onCheckout={() => { setIsCartOpen(false); setStoreView('checkout'); }}
-      />
-    </StoreLayout>
+      {/* Renderizado del portal activo */}
+      {activePortal === 'store' && <StoreApp />}
+      {(activePortal === 'pos' || activePortal === 'admin') && <PosApp />}
+    </div>
   );
 }
 
