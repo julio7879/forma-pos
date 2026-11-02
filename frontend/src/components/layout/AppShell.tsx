@@ -22,7 +22,10 @@ const SideContent = ({ currentView, setCurrentView, onNavigate }: { currentView:
         <button onClick={() => { setCurrentView('pos'); onNavigate?.(); }} className={`${sideItem} ${currentView === 'pos' ? 'bg-ink/50 text-accent font-medium' : ''}`}>
           <Monitor className="size-4" /> Caja / POS
         </button>
-        <button onClick={() => { setCurrentView('admin'); onNavigate?.(); }} className={sideItem}>
+        <button 
+          onClick={() => { setCurrentView('admin-orders'); onNavigate?.(); }} 
+          className={`${sideItem} ${currentView === 'admin-orders' ? 'bg-ink/50 text-accent font-medium' : ''}`}
+        >
           <ClipboardList className="size-4" /> Pedidos
         </button>
       </nav>
