@@ -246,6 +246,48 @@ Running generate... (Use --skip-generate to skip the generators)
 
 ---
 
+
+## 📊 Hito 9: Backend de Dashboard Operativo y KPIs en Tiempo Real
+- **Fecha:** 2 de noviembre de 2026
+- **Estado:** 🟣 PR #40 integrado y fusionado en `develop`
+- **Responsable:** Yeimer Torres (Backend de Datos)
+- **Issue vinculada:** [#34](https://github.com/julio7879/forma-pos/issues/34)
+- **Pull Request:** [PR #40](https://github.com/julio7879/forma-pos/pull/40)
+
+### 1. Aportes Técnicos e Integración
+1. **Métricas Agregadas con Prisma (`dashboard.service.ts` — RF-10):**
+   - Total facturado de la plataforma excluyendo pedidos cancelados (`aggregate._sum.total_final`).
+   - Total recaudado en caja acumulado (`aggregate._sum.total_pagado`).
+   - Distribución y conteo reactivo de pedidos agrupados por estado (`groupBy: estado_pedido`).
+   - Conteo de pedidos con saldo pendiente y feed de los 5 pedidos más recientes.
+2. **Alerta Preventiva de Inventario Crítico:**
+   - Filtro reactivo de productos en stock bajo ($stock\_actual \le stock\_minimo$) para reabastecimiento en mostrador y taller.
+3. **Seguridad y Control de Acceso (RF-12):**
+   - Endpoint `GET /api/dashboard/stats` protegido estrictamente con el middleware `requireRole(['ADMIN', 'SUPERVISOR'])`.
+
+---
+
+## 📋 Hito 10: Frontend Panel de Gestión de Pedidos y Transición de Estados
+- **Fecha:** 2 de noviembre de 2026
+- **Estado:** 🟣 PR #43 integrado y fusionado en `develop`
+- **Responsable:** Esneider Nava (Frontend POS & Admin)
+- **Issue vinculada:** [#41](https://github.com/julio7879/forma-pos/issues/41)
+- **Pull Request:** [PR #43](https://github.com/julio7879/forma-pos/pull/43)
+
+### 1. Aportes Técnicos e Integración
+1. **Panel Operativo de Taller (`AdminOrders.tsx` — RF-04):**
+   - Listado tabular de pedidos consumiendo `orderService.getOrders()`.
+   - Filtro reactivo por pestañas de estado de producción (`TODOS`, `RECIBIDO`, `EN_PREPARACION`, `LISTO`, `ENTREGADO`).
+   - Buscador predictivo por referencia de pedido o nombre de cliente y filtro por canal (`WEB` / `POS`).
+2. **Modal de Detalle y Snapshots Inmutables (`OrderDetailModal.tsx` — RF-13):**
+   - Visualización de la orden de trabajo con desglose de opciones personalizadas (`opciones_snapshot`: color, tamaño, texto personalizado).
+3. **Máquina de Estados Unidireccional en UI (`RF-06`):**
+   - Stepper interactivo y botón de avance rápido hacia el siguiente estado legal.
+   - Candado financiero (RF-07): Alerta de advertencia si se intenta entregar un pedido que aún tiene saldo pendiente (`estado_pago !== 'PAGADO'`).
+4. **Enrutamiento Interno:**
+   - Conectado en `AppShell.tsx` y `PosApp.tsx` en el botón de navegación 'Pedidos'.
+
+---
 ## 📌 Estado Actual del Tablero Kanban (Fase 1 / 31 de Octubre)
 - **Completadas (Done):**
   - #1 Monorepo scaffolding
@@ -267,9 +309,10 @@ Running generate... (Use --skip-generate to skip the generators)
   - #19 Maquetar vistas de Tienda Web: catálogo y configurador (**[PR #39](https://github.com/julio7879/forma-pos/pull/39)**)
   - #20 Maquetar vistas de POS: terminal de venta rápida y cobro (**[PR #38](https://github.com/julio7879/forma-pos/pull/38)**)
   - #31 Tipos TypeScript compartidos, cliente HTTP y datos mock frontend (**[PR #37](https://github.com/julio7879/forma-pos/pull/37)**)
+  - #34 Implementar endpoint de Dashboard Operativo y KPIs GET /api/dashboard/stats (**[PR #40](https://github.com/julio7879/forma-pos/pull/40)**)
+  - #41 Implementar panel de gestión de pedidos, detalle de taller y transición de estados (**[PR #43](https://github.com/julio7879/forma-pos/pull/43)**)
 - **En Revisión / Listas para Merge (In Review):**
-  - #34 Implementar endpoint de Dashboard Operativo y KPIs GET /api/dashboard/stats (**[PR #40](https://github.com/julio7879/forma-pos/pull/40)** — Yeimer)
+  - Ninguno pendiente (Todos los PRs revisados e integrados)
 - **En Progreso (In Progress):**
-  - #41 Implementar panel de gestión de pedidos, detalle de taller y transición de estados (**[Issue #41](https://github.com/julio7879/forma-pos/issues/41)** — Esneider)
   - #35 Ejecutar y documentar la suite de pruebas funcionales de endpoints en docs/qa-test-matrix.md (**Thomas**)
   - #36 Auditar flujos de usuario en prototipo interactivo y checklist demo jurado (**Thomas**)
